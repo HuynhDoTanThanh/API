@@ -20,6 +20,8 @@ class ObjectDetection(object):
         result = []
 
         for _, row in locate.iterrows():
-            result.append((((int(row['xmin']), int(row['ymin'])), (int(row['xmax']), int(row['ymax']))), (int((row['xmax'] + row['xmin']) / 2), int((row['ymax'] + row['ymin']) / 2))))
+            result.append([[int((row['xmax'] + row['xmin']) / 2), int(row['ymax'])],
+                            [int((row['xmax'] + row['xmin']) / 2), int((row['ymax'] + row['ymin']) / 2)],
+                            row['name']])
 
-        return result
+        return np.array(result, dtype='object')

@@ -1,6 +1,8 @@
 from model.SemanticSegmentation.semantic_segmentation import models
 from model.SemanticSegmentation.semantic_segmentation import load_model
 from model.SemanticSegmentation.semantic_segmentation import draw_results
+from util.position import get_position, check_on_road
+
 
 import torch
 from torchvision import transforms
@@ -50,5 +52,28 @@ class SegLane(object):
 
         res += crosswalk_on_sidewalk + mask[0]
         res = np.array(res, dtype='uint8')
-        return res, binary
+
+        on_road = check_on_road(res)
+
+        return res, binary, on_road
+        
+    def describe(self, image, points):
+        image = self.fn_image_transform(image)
+
+        with torch.no_grad():
+            image = image.to(self.device).unsqueeze(0)
+            results = self.model(image)['out']
+            results = torch.sigmoid(results)
+
+            results = results > self.threshold
+
+        mask = results[0].cpu().numpy().astype("int")
+        sidewalk_on_road = cv2.bitwise_or(mask[2], mask[1])
+        crosswalk_on_sidewalk = cv2.bitwise_or(mask[2], mask[0])
+        res = cv2.bitwise_or(mask[0], sidewalk_on_road)
+
+        res += crosswalk_on_sidewalk + mask[0]
+        res = np.array(res, dtype='uint8')
+
+        return get_position(points, res)
     
