@@ -1,0 +1,5 @@
+albumentations
+timm
+pytorch-ignite
+fastapi
+uvicorn
