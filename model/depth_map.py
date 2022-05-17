@@ -125,5 +125,3 @@ class DepthMap(object):
             obstacle_checker.append(False)
         
         return obstacle_checker
-
-    

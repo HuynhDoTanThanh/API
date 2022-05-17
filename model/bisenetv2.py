@@ -76,4 +76,3 @@ class SegLane(object):
         res = np.array(res, dtype='uint8')
 
         return get_position(points, res)
-    

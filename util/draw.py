@@ -23,4 +23,3 @@ def draw_obstacle(image, obstacle_checker):
             cv2.putText(image, "X", p, cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0),2)
 
     return image
-
