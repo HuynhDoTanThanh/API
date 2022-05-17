@@ -67,14 +67,14 @@ async def describe(file: UploadFile = File(...), question: str = None):
     seg_image = cv2.resize(image.copy(), (960, 960))
     image = cv2.resize(image, (960, 540))
 
-    class_ques = ["On road", "On sidewalk", "Left", "Right", "Front", "All", "Near", "Far"]
+    # class_ques = ["On road", "On sidewalk", "Left", "Right", "Front", "All", "Near", "Far"]
     start = time.time()
     destination = Question.predict(question)[0]
     print(destination)
     locate = Object.detect(image)
     depth_distance = Distance.get_depth_map(image)
 
-    positions = np.array(SegmentationLane.describe(seg_image, locate[:,0]))
+    positions = np.array(SegmentationLane.describe(seg_image, locate[:,0:2]))
     '''
     Value 1: {Sidewalk : 1, Road : 2, Nothing : 0}
     Value 2: {Left : 0, Front : 1, Right : 2}
@@ -106,8 +106,7 @@ async def describe(file: UploadFile = File(...), question: str = None):
     else:
         result = result[result[:, 2] == 0][:,3:]
     
-    result = result[result[:, 1].argsort()]
-    # output = {"distances": distances, "describe": positions, "object_name": object_names.tolist()}
+    result = result[result[:, -1].argsort()][:, 3:]
     print(result)
     end = time.time()
     print(end - start)

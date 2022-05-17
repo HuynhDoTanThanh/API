@@ -1,5 +1,5 @@
 import numpy as np
-
+import math
 
 def get_position(points, mask):
     boundary = 50
@@ -8,7 +8,7 @@ def get_position(points, mask):
 
     describe = []
 
-    for p in points:
+    for p, c in points:
         p[1] = int(p[1]*960/540)
         start_point = (p[0] - int(boundary/2), p[1] - int(boundary/2))
         end_point = (p[0] + int(boundary/2), p[1] + int(boundary/2))
@@ -52,6 +52,8 @@ def get_position(points, mask):
         else:
             position.append(1)
         
+        position.append(direction(c))
+        
         describe.append(position)
 
     return describe
@@ -64,6 +66,12 @@ def check_on_road(mask):
     else:
         avg = np.sum(crop_image) / omega
         if avg > 1.5:
-            return True
-        else:
             return False
+        else:
+            return True
+
+def direction(point):
+    return int(math.acos((480-point[0]) / math.sqrt((480-point[0])**2 + (960-point[1])**2))*180/math.pi)
+
+if __name__=='__main__':
+    print(direction((200,200)))

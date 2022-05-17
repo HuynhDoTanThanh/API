@@ -76,12 +76,8 @@ class DepthMap(object):
 
     def get_obstacle(self, image, seg_lane_binary):
         depth_map = self.get_depth_map(image)
-
         seg_lane_binary = cv2.resize(np.array(seg_lane_binary, dtype='uint8'), self.size)
-
         obstacle = depth_map - seg_lane_binary*depth_map
-
-        print(obstacle.shape)
 
         return np.array(obstacle, dtype='uint8')
 
