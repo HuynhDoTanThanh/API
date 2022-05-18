@@ -56,8 +56,8 @@ class DepthMap(object):
                 align_corners=False,
             ).squeeze()
         
-            depth_map = np.asarray(prediction)
-            
+            # depth_map = np.asarray(prediction)
+            depth_map = prediction.cpu().numpy()
         if self.obstacle:
             result = np.vectorize(self.transform_output)(depth_map)
             result = np.array(result, dtype='uint8')
