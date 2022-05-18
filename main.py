@@ -67,10 +67,10 @@ async def describe(file: UploadFile = File(...), question: str = None):
     seg_image = cv2.resize(image.copy(), (960, 960))
     image = cv2.resize(image, (960, 540))
 
-    # class_ques = ["On road", "On sidewalk", "Left", "Right", "Front", "All", "Near", "Far"]
+    class_ques = ["Road", "Sidewalk", "Left", "Right", "Front", "All", "Near", "Far"]
     start = time.time()
-    destination = Question.predict(question)[0]
-    print(destination)
+    focus_region = Question.predict(question)[0]
+    # print(destination)
     locate = Object.detect(image)
     depth_distance = Distance.get_depth_map(image)
 
@@ -84,34 +84,37 @@ async def describe(file: UploadFile = File(...), question: str = None):
     get_distance = lambda x: depth_to_distance(depth_distance[x[1], x[0]])
     distances= np.vectorize(get_distance)(locate[:,1])
 
-    print(positions.shape, object_names.shape, distances.shape)
+    # print(positions.shape, object_names.shape, distances.shape)
     result = np.concatenate((positions, object_names.reshape(-1,1), distances.reshape(-1,1)), axis=1)
     
-    print(result)
+    # print(result)
 
-    if destination == 0:
-        result = result[result[:, 0] == 2][:,3:]
-    elif destination == 1:
-        result = result[result[:, 0] == 1][:,3:]
-    elif destination == 2:
-        result = result[result[:, 1] == 0][:,3:]
-    elif destination == 3:
-        result = result[result[:, 1] == 2][:,3:]
-    elif destination == 4:
-        result = result[result[:, 1] == 1][:,3:]
-    elif destination == 5:
+    if focus_region == 0:
+        result = result[result[:, 0] == 2]
+    elif focus_region == 1:
+        result = result[result[:, 0] == 1]
+    elif focus_region == 2:
+        result = result[result[:, 1] == 0]
+    elif focus_region == 3:
+        result = result[result[:, 1] == 2]
+    elif focus_region == 4:
+        result = result[result[:, 1] == 1]
+    elif focus_region == 5:
         pass
-    elif destination == 6:
-        result = result[result[:, 2] == 1][:,3:]
+    elif focus_region == 6:
+        result = result[result[:, 2] == 1]
     else:
-        result = result[result[:, 2] == 0][:,3:]
+        result = result[result[:, 2] == 0]
     
+    # print(len(result))
     result = result[result[:, -1].argsort()][:, 3:]
-    print(result)
+    # print(result)
     end = time.time()
     print(end - start)
 
-    return json.dumps(result.tolist(), indent=4)
+    output = {'result': result.tolist(), 'focus_region': class_ques[focus_region]}
+
+    return json.dumps(output, indent=4)
 
 
 
