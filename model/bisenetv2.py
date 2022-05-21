@@ -8,9 +8,10 @@ import torch
 from torchvision import transforms
 import cv2
 import numpy as np
+import cupy
 
 class SegLane(object):
-    def __init__(self, weight_path="weights/model_BiSeNet-FullData-960_35_best.pt", threshold=0.4):
+    def __init__(self, weight_path="weights/model_BiSeNet-960-2cat_46.pt", threshold=0.4):
         self.weight_path = weight_path
         self.threshold = threshold
 
@@ -35,26 +36,22 @@ class SegLane(object):
 
     def detect(self, image):
         image = self.fn_image_transform(image)
-
+        
         with torch.no_grad():
             image = image.to(self.device).unsqueeze(0)
             results = self.model(image)['out']
             results = torch.sigmoid(results)
-
-            results = results > self.threshold
-
-        mask = results[0].cpu().numpy().astype("int")
-        sidewalk_on_road = cv2.bitwise_or(mask[2], mask[1])
-        crosswalk_on_sidewalk = cv2.bitwise_or(mask[2], mask[0])
-        res = cv2.bitwise_or(mask[0], sidewalk_on_road)
-
-        binary = res.copy()
-
-        res += crosswalk_on_sidewalk + mask[0]
+        
+        result = results[0].cpu().numpy()
+        result[result < 0.4] = 0 
+        mask_road = result[0]
+        mask_sidewalk = result[1]
+        sidewalk_or_road = ((mask_road + mask_sidewalk) > 0.4).astype("int")
+        binary = sidewalk_or_road.copy()
+        get_max = (mask_sidewalk > mask_road).astype("int")
+        res = sidewalk_or_road + get_max
         res = np.array(res, dtype='uint8')
-
         on_road = check_on_road(res)
-
         return res, binary, on_road
         
     def describe(self, image, points):
@@ -64,15 +61,14 @@ class SegLane(object):
             image = image.to(self.device).unsqueeze(0)
             results = self.model(image)['out']
             results = torch.sigmoid(results)
-
-            results = results > self.threshold
-
-        mask = results[0].cpu().numpy().astype("int")
-        sidewalk_on_road = cv2.bitwise_or(mask[2], mask[1])
-        crosswalk_on_sidewalk = cv2.bitwise_or(mask[2], mask[0])
-        res = cv2.bitwise_or(mask[0], sidewalk_on_road)
-
-        res += crosswalk_on_sidewalk + mask[0]
+            
+        result = results[0].cpu().numpy()
+        result[result < 0.4] = 0 
+        mask_road = result[0]
+        mask_sidewalk = result[1]
+        sidewalk_or_road = ((mask_road + mask_sidewalk) > 0.4).astype("int")
+        get_max = (mask_sidewalk > mask_road).astype("int")
+        res = sidewalk_or_road + get_max
         res = np.array(res, dtype='uint8')
-
+        
         return get_position(points, res)
