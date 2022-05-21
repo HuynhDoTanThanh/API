@@ -70,5 +70,5 @@ class SegLane(object):
         get_max = (mask_sidewalk > mask_road).astype("int")
         res = sidewalk_or_road + get_max
         res = np.array(res, dtype='uint8')
-        
+
         return get_position(points, res)
