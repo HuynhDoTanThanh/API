@@ -24,8 +24,6 @@ tqdm>=4.41.0
 tensorboard>=2.4.1
 
 thop 
-<<<<<<< HEAD
+ 
 
-# cupy-cuda116
-=======
->>>>>>> 0d6a2a671d0bbb8ea91ddb59b0ecfa797adfae54
+
