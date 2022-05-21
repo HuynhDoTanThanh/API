@@ -19,7 +19,7 @@ import json
 app = FastAPI()
 
 Obstacle = DepthMap(model_type='MiDaS_small', size=(960,540), obstacle=True)
-SegmentationLane = SegLane(weight_path="model/weights/model_BiSeNet-FullData-960_35_best.pt", threshold=0.4)
+SegmentationLane = SegLane(weight_path="model/weights/model_BiSeNet-960-2cat_46.pt", threshold=0.4)
 Object = ObjectDetection(weight_path='model/weights/best.pt', conf=0.5)
 Distance = DepthMap(model_type='DPT_Hybrid', obstacle=False)
 Question = ClassificationQuestion(model_path="model/weights/classification_question.pkl")

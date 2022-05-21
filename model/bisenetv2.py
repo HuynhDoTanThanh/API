@@ -8,8 +8,6 @@ import torch
 from torchvision import transforms
 import cv2
 import numpy as np
-import cupy
-
 class SegLane(object):
     def __init__(self, weight_path="weights/model_BiSeNet-960-2cat_46.pt", threshold=0.4):
         self.weight_path = weight_path
