@@ -5,6 +5,7 @@ fastapi
 uvicorn
 python-multipart
 pyvi
+SpeechRecognition
 
 #YOLOv5
 pandas>=1.1.4

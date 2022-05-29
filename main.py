@@ -30,9 +30,7 @@ Question = ClassificationQuestion(model_path="model/weights/classification_quest
 SpeechRecognition = Speech2Text()
 
 def read_imagefile(file) -> np.ndarray:
-    img_base64_string = file["data"].replace("\n", "")
-
-    img_bytes = base64.b64decode(img_base64_string)
+    img_bytes = base64.b64decode(file)
     img_bytesIO = BytesIO(img_bytes)
     img_bytesIO.seek(0)
     image = Image.open(img_bytesIO)
@@ -55,36 +53,33 @@ async def create_upload_files(file):
 
 @app.post("/streaming")
 async def streaming(file: dict):
-    image = read_imagefile(file)
+    start = time.time()
+    image = read_imagefile(file["data"].replace("\n", ""))
 
     dep_image = cv2.resize(image.copy(), (960, 540))
     seg_image = cv2.resize(image, (960, 960))
 
-    start = time.time()
     _, binary_lane, on_road = SegmentationLane.detect(seg_image)
-    end1 = time.time()
     depth_obstacle = Obstacle.get_obstacle(dep_image, binary_lane)
     obstacle_checker = Obstacle.check_obstacle(depth_obstacle)
-    end2 = time.time()
-    print(end1 - start)
-    print(end2 - end1)
 
-    output = {'obstacle': obstacle_checker, 'on_road': on_road}
+    end = time.time()
+    output = {'obstacle': obstacle_checker, 'on_road': on_road, 'time_process': end - start}
     
     return json.dumps(output)
 
 @app.post("/describe")
 async def describe(file: dict):
-    image = read_imagefile(file)
+    start = time.time()
+    image = read_imagefile(file["data"].replace("\n", ""))
     seg_image = cv2.resize(image.copy(), (960, 960))
     image = cv2.resize(image, (960, 540))
     question = SpeechRecognition.recognition(file["ques"])
-    print(question)
+    # print(question)
     if question == None:
         return "0"
     else:
         class_ques = ["Road", "Sidewalk", "Left", "Right", "Front", "All", "Near", "Far"]
-        start = time.time()
         focus_region = Question.predict(question)[0]
         # print(destination)
         locate = Object.detect(image)
@@ -130,15 +125,10 @@ async def describe(file: dict):
 
             result_dict = {"orientation": result[:, 0].tolist(), "object_name": result[:, 1].tolist(), "distance": result[:, 2].tolist()}
 
+    end = time.time()
+    output = {'result': result_dict, 'focus_region': class_ques[focus_region], 'time_process': end - start}
 
-
-            # print(result)
-            end = time.time()
-            print(end - start)
-
-            output = {'result': result_dict, 'focus_region': class_ques[focus_region]}
-
-            return json.dumps(output)
+    return json.dumps(output)
 
 
 
