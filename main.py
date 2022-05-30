@@ -78,7 +78,7 @@ async def describe(file: dict):
     depth_distance = Distance.get_depth_map(image)
 
     if len(locate) == 0:
-        return "-1" + str(focus_region)
+        return "-1" + str(class_ques[focus_region])
     else:
         positions = np.array(SegmentationLane.describe(image, locate[:,0:2]))
         '''
@@ -113,7 +113,7 @@ async def describe(file: dict):
             result = result[result[:, 2] == 0]
             
         if len(result[:, 0].tolist()) == 0:
-            return "-1" + str(focus_region)
+            return "-1" + str(class_ques[focus_region])
         else:
             result = result[result[:, -1].argsort()][:, 3:]
 
