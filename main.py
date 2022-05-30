@@ -4,7 +4,6 @@ from model.classification_question import ClassificationQuestion
 from model.depth_map import DepthMap
 from model.yolov5 import ObjectDetection
 from model.bisenetv2 import SegLane
-from model.speech_to_text import Speech2Text
 from util.draw import *
 from util.depth2distance import depth_to_distance
 
@@ -27,7 +26,6 @@ SegmentationLane = SegLane(weight_path="model/weights/model_BiSeNet-960-2cat_46.
 Object = ObjectDetection(weight_path='model/weights/best.pt', conf=0.5)
 Distance = DepthMap(model_type='DPT_Hybrid', obstacle=False)
 Question = ClassificationQuestion(model_path="model/weights/classification_question.pkl")
-SpeechRecognition = Speech2Text()
 
 def read_imagefile(file) -> np.ndarray:
     img_bytes = base64.b64decode(file)
@@ -74,56 +72,51 @@ async def describe(file: dict):
     image = read_imagefile(file["data"].replace("\n", ""))
     seg_image = cv2.resize(image.copy(), (960, 960))
     image = cv2.resize(image, (960, 540))
-    question = SpeechRecognition.recognition(file["ques"])
-    # print(question)
-    if question == None:
-        return "0"
+    class_ques = ["Road", "Sidewalk", "Left", "Right", "Front", "All", "Near", "Far"]
+    focus_region = Question.predict(str(file["ques"]))[0]
+    # print(destination)
+    locate = Object.detect(image)
+    if len(locate) == 0:
+        return "-1"
     else:
-        class_ques = ["Road", "Sidewalk", "Left", "Right", "Front", "All", "Near", "Far"]
-        focus_region = Question.predict(question)[0]
-        # print(destination)
-        locate = Object.detect(image)
-        if len(locate) == 0:
-            return "-1"
+        depth_distance = Distance.get_depth_map(image)
+
+        positions = np.array(SegmentationLane.describe(seg_image, locate[:,0:2]))
+        '''
+        Value 1: {Sidewalk : 1, Road : 2, Nothing : 0}
+        Value 2: {Left : 0, Front : 1, Right : 2}
+        Value 3: {Far : 0, Near : 1}
+        '''
+        object_names = locate[:,2]
+        get_distance = lambda x: depth_to_distance(depth_distance[x[1], x[0]])
+        distances= np.vectorize(get_distance)(locate[:,1])
+
+        # print(positions.shape, object_names.shape, distances.shape)
+        result = np.concatenate((positions, object_names.reshape(-1,1), distances.reshape(-1,1)), axis=1)
+        
+        # print(result)
+
+        if focus_region == 0:
+            result = result[result[:, 0] == 2]
+        elif focus_region == 1:
+            result = result[result[:, 0] == 1]
+        elif focus_region == 2:
+            result = result[result[:, 1] == 0]
+        elif focus_region == 3:
+            result = result[result[:, 1] == 2]
+        elif focus_region == 4:
+            result = result[result[:, 1] == 1]
+        elif focus_region == 5:
+            pass
+        elif focus_region == 6:
+            result = result[result[:, 2] == 1]
         else:
-            depth_distance = Distance.get_depth_map(image)
+            result = result[result[:, 2] == 0]
+        
+        # print(len(result))
+        result = result[result[:, -1].argsort()][:, 3:]
 
-            positions = np.array(SegmentationLane.describe(seg_image, locate[:,0:2]))
-            '''
-            Value 1: {Sidewalk : 1, Road : 2, Nothing : 0}
-            Value 2: {Left : 0, Front : 1, Right : 2}
-            Value 3: {Far : 0, Near : 1}
-            '''
-            object_names = locate[:,2]
-            get_distance = lambda x: depth_to_distance(depth_distance[x[1], x[0]])
-            distances= np.vectorize(get_distance)(locate[:,1])
-
-            # print(positions.shape, object_names.shape, distances.shape)
-            result = np.concatenate((positions, object_names.reshape(-1,1), distances.reshape(-1,1)), axis=1)
-            
-            # print(result)
-
-            if focus_region == 0:
-                result = result[result[:, 0] == 2]
-            elif focus_region == 1:
-                result = result[result[:, 0] == 1]
-            elif focus_region == 2:
-                result = result[result[:, 1] == 0]
-            elif focus_region == 3:
-                result = result[result[:, 1] == 2]
-            elif focus_region == 4:
-                result = result[result[:, 1] == 1]
-            elif focus_region == 5:
-                pass
-            elif focus_region == 6:
-                result = result[result[:, 2] == 1]
-            else:
-                result = result[result[:, 2] == 0]
-            
-            # print(len(result))
-            result = result[result[:, -1].argsort()][:, 3:]
-
-            result_dict = {"orientation": result[:, 0].tolist(), "object_name": result[:, 1].tolist(), "distance": result[:, 2].tolist()}
+        result_dict = {"orientation": result[:, 0].tolist(), "object_name": result[:, 1].tolist(), "distance": result[:, 2].tolist()}
 
     end = time.time()
     output = {'result': result_dict, 'focus_region': class_ques[focus_region], 'time_process': end - start}

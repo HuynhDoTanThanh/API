@@ -71,7 +71,10 @@ def check_on_road(mask):
             return True
 
 def direction(point):
-    return int(math.acos((480-point[0]) / math.sqrt((480-point[0])**2 + (960-point[1])**2))*180/math.pi)
+    angle_ob =  int(math.acos((480-point[0]) / math.sqrt((480-point[0])**2 + (960-point[1])**2))*180/math.pi)
+    angle2oclock = [9,10,11,12,1,2,3]
+    return angle2oclock[round(angle_ob/30)]
+
 
 if __name__=='__main__':
     print(direction((200,200)))
