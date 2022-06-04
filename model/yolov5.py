@@ -1,5 +1,5 @@
 import torch
-import cv2
+import time
 import numpy as np
 
 class ObjectDetection(object):
@@ -14,14 +14,21 @@ class ObjectDetection(object):
         self.model = model
 
     def detect(self, image):
+        start = time.time()
         pre = self.model(image, size=640)
+        end = time.time()
+        time_predict = end - start
+
         locate = pre.pandas().xyxy[0]
 
         result = []
 
         for _, row in locate.iterrows():
-            result.append([[int((row['xmax'] + row['xmin']) / 2), int(row['ymax'])],
+            result.append([
+                            [int((row['xmax'] + row['xmin']) / 2), int(row['ymax'])],
                             [int((row['xmax'] + row['xmin']) / 2), int((row['ymax'] + row['ymin']) / 2)],
-                            row['name']])
-
-        return np.array(result, dtype='object')
+                            row['name'], 
+                            [(int(row['xmin']), int(row['ymin'])),(int(row['xmax']), int(row['ymax']))]
+                        ])
+         
+        return np.array(result, dtype='object'), time_predict

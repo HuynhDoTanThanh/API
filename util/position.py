@@ -9,7 +9,6 @@ def get_position(points, mask):
     describe = []
 
     for p, c in points:
-        p[1] = int(p[1]*960/540)
         start_point = [p[0] - int(boundary/2), p[1] - int(boundary/2)]
         end_point = [p[0] + int(boundary/2), p[1] + int(boundary/2)]
 

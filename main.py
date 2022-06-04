@@ -1,5 +1,4 @@
 import base64
-from matplotlib import image
 from model.classification_question import ClassificationQuestion
 from model.depth_map import DepthMap
 from model.yolov5 import ObjectDetection
@@ -10,10 +9,9 @@ from util.depth2distance import depth_to_distance
 import cv2
 from fastapi import FastAPI
 import uvicorn
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI
 from PIL import Image
 from io import BytesIO
-import matplotlib.pyplot as plt
 import time
 import json
 import argparse
@@ -56,12 +54,12 @@ async def streaming(file: dict):
 
     dep_image = cv2.resize(image.copy(), (960, 540))
 
-    _, binary_lane, on_road = SegmentationLane.detect(image)
-    depth_obstacle = Obstacle.get_obstacle(dep_image, binary_lane)
+    _, binary_lane, on_road, time_segment = SegmentationLane.detect(image)
+    depth_obstacle, time_depthmap = Obstacle.get_obstacle(dep_image, binary_lane)
     obstacle_checker = Obstacle.check_obstacle(depth_obstacle)
 
     end = time.time()
-    output = {'obstacle': obstacle_checker, 'on_road': on_road, 'time_process': end - start}
+    output = {'obstacle': obstacle_checker, 'on_road': on_road, 'time_process': end - start, 'time_segment': time_segment, 'time_depthmap': time_depthmap}
     
     return json.dumps(output)
 
@@ -69,25 +67,26 @@ async def streaming(file: dict):
 async def describe(file: dict):
     start = time.time()
     image = read_imagefile(file["data"].replace("\n", ""))
-    image = cv2.resize(image, (960, 540))
+    image_depth = cv2.resize(image.copy(), (960, 540))
+
     class_ques = ["Road", "Sidewalk", "Left", "Right", "Front", "All", "Near", "Far"]
     focus_region = Question.predict(str(file["ques"]))[0]
-    # print(destination)
-    locate = Object.detect(image)
 
-    depth_distance = Distance.get_depth_map(image)
+    locate, time_detect = Object.detect(image)
+    depth_distance, time_depthmap = Distance.get_depth_map(image_depth)
 
     if len(locate) == 0:
         return "-1" + str(class_ques[focus_region])
     else:
-        positions = np.array(SegmentationLane.describe(image, locate[:,0:2]))
+        describe, time_segment = SegmentationLane.describe(image, locate[:,0:2])
+        positions = np.array(describe)
         '''
         Value 1: {Sidewalk : 1, Road : 2, Nothing : 0}
         Value 2: {Left : 0, Front : 1, Right : 2}
         Value 3: {Far : 0, Near : 1}
         '''
         object_names = locate[:,2]
-        get_distance = lambda x: depth_to_distance(depth_distance[x[1], x[0]])
+        get_distance = lambda x: depth_to_distance(depth_distance[int(x[1]*540/960), x[0]])
         distances= np.vectorize(get_distance)(locate[:,1])
 
         # print(positions.shape, object_names.shape, distances.shape)
@@ -120,7 +119,7 @@ async def describe(file: dict):
             result_dict = {"orientation": result[:, 0].tolist(), "object_name": result[:, 1].tolist(), "distance": result[:, 2].tolist()}
 
         end = time.time()
-        output = {'result': result_dict, 'focus_region': class_ques[focus_region], 'time_process': end - start}
+        output = {'result': result_dict, 'focus_region': class_ques[focus_region], 'time_process': end - start, 'time_detect': time_detect, 'time_segment': time_segment, 'time_depthmap': time_depthmap}
 
     return json.dumps(output)
 

@@ -1,8 +1,8 @@
 import cv2
 import numpy as np
 
-def draw_object_detecion(image, result, distances):
-    for (box, center), dis in zip(result, distances):
+def draw_object_detecion(image, boxes, centers, distances):
+    for box, center, dis in zip(boxes, centers, distances):
         cv2.rectangle(image, box[0], box[1], (0, 255, 0), 2)
         cv2.circle(image, center, 5, (0, 0, 255), 2)
 

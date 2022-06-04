@@ -1,6 +1,8 @@
+from tracemalloc import start
 import numpy as np
 import torch
 import cv2
+import time
 
 
 class DepthMap(object):
@@ -45,7 +47,7 @@ class DepthMap(object):
     def get_depth_map(self, image):
         input_batch = self.m_transform(image).to(self.device)
 
-        
+        start = time.time()
         with torch.no_grad():
             prediction = self.midas(input_batch)
 
@@ -55,16 +57,19 @@ class DepthMap(object):
                 mode="bicubic",
                 align_corners=False,
             ).squeeze()
-        
             # depth_map = np.asarray(prediction)
             depth_map = prediction.cpu().numpy()
+        end = time.time()
+
+        time_predict = end - start
+
         if self.obstacle:
             result = np.vectorize(self.transform_output)(depth_map)
             result = np.array(result, dtype='uint8')
         else:
-            depth_map[depth_map>2000] = 2000
+            depth_map[depth_map>2500] = 2500
             depth_map[depth_map<1] = 1
-            depth_map /= 2000
+            depth_map /= 2500
             result = depth_map
             
             # mean_depth_map = len(depth_map[depth_map>0.6])/(depth_map.shape[0]*depth_map.shape[1])
@@ -72,14 +77,14 @@ class DepthMap(object):
             #     scale_func = lambda x: x + ((1/(x+1))-0.5)*(mean_depth_map-0.3)
             #     result = np.vectorize(scale_func)(depth_map)
 
-        return result
+        return result, time_predict
 
     def get_obstacle(self, image, seg_lane_binary):
-        depth_map = self.get_depth_map(image)
+        depth_map, time_predict = self.get_depth_map(image)
         seg_lane_binary = cv2.resize(np.array(seg_lane_binary, dtype='uint8'), self.size)
         obstacle = depth_map - seg_lane_binary*depth_map
 
-        return np.array(obstacle, dtype='uint8')
+        return np.array(obstacle, dtype='uint8'), time_predict
 
     def check_obstacle(self, obstacle):
         obstacle_checker = []

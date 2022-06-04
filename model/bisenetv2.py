@@ -1,12 +1,11 @@
 from model.SemanticSegmentation.semantic_segmentation import models
 from model.SemanticSegmentation.semantic_segmentation import load_model
-from model.SemanticSegmentation.semantic_segmentation import draw_results
 from util.position import get_position, check_on_road
 
 
 import torch
 from torchvision import transforms
-import cv2
+import time
 import numpy as np
 class SegLane(object):
     def __init__(self, weight_path="weights/model_BiSeNet-960-2cat_46.pt", threshold=0.4):
@@ -34,12 +33,14 @@ class SegLane(object):
 
     def detect(self, image):
         image = self.fn_image_transform(image)
-        
+        start = time.time()
         with torch.no_grad():
             image = image.to(self.device).unsqueeze(0)
             results = self.model(image)['out']
             results = torch.sigmoid(results)
-        
+        end = time.time()
+        time_predict = end - start
+
         result = results[0].cpu().numpy()
         result[result < 0.4] = 0 
         mask_road = result[0]
@@ -50,16 +51,18 @@ class SegLane(object):
         res = sidewalk_or_road + get_max
         res = np.array(res, dtype='uint8')
         on_road = check_on_road(res)
-        return res, binary, on_road
+        return res, binary, on_road, time_predict
         
     def describe(self, image, points):
         image = self.fn_image_transform(image)
-
+        start = time.time()
         with torch.no_grad():
             image = image.to(self.device).unsqueeze(0)
             results = self.model(image)['out']
             results = torch.sigmoid(results)
-            
+        end = time.time()
+        time_predict = end - start
+
         result = results[0].cpu().numpy()
         result[result < 0.4] = 0 
         mask_road = result[0]
@@ -69,4 +72,4 @@ class SegLane(object):
         res = sidewalk_or_road + get_max
         res = np.array(res, dtype='uint8')
 
-        return get_position(points, res)
+        return get_position(points, res), time_predict
