@@ -1,4 +1,6 @@
 from tracemalloc import start
+from matplotlib import pyplot as plt
+import matplotlib
 import numpy as np
 import torch
 import cv2
@@ -34,15 +36,16 @@ class DepthMap(object):
         return
     
     def transform_output(self, value):
-        if value > 620:
-            return 255
-        if value < 345:
+        value = value/700
+
+        value = (63*value-31)/(161-153*value)
+
+        if value < 0:
             return 0
-        value = value/700*255
-
-        value = (315*value - 39525)/(805-3*value)
-
-        return int(value)
+        elif value > 1:
+            return 1
+        else:
+            return value
 
     def get_depth_map(self, image):
         input_batch = self.m_transform(image).to(self.device)
@@ -57,25 +60,19 @@ class DepthMap(object):
                 mode="bicubic",
                 align_corners=False,
             ).squeeze()
-            # depth_map = np.asarray(prediction)
             depth_map = prediction.cpu().numpy()
+
         end = time.time()
 
         time_predict = end - start
 
         if self.obstacle:
-            result = np.vectorize(self.transform_output)(depth_map)
-            result = np.array(result, dtype='uint8')
+            result = np.vectorize(self.transform_output, otypes=[float])(depth_map)
         else:
             depth_map[depth_map>2500] = 2500
             depth_map[depth_map<1] = 1
             depth_map /= 2500
             result = depth_map
-            
-            # mean_depth_map = len(depth_map[depth_map>0.6])/(depth_map.shape[0]*depth_map.shape[1])
-            # if mean_depth_map > 0.3:
-            #     scale_func = lambda x: x + ((1/(x+1))-0.5)*(mean_depth_map-0.3)
-            #     result = np.vectorize(scale_func)(depth_map)
 
         return result, time_predict
 
@@ -84,43 +81,43 @@ class DepthMap(object):
         seg_lane_binary = cv2.resize(np.array(seg_lane_binary, dtype='uint8'), self.size)
         obstacle = depth_map - seg_lane_binary*depth_map
 
-        return np.array(obstacle, dtype='uint8'), time_predict
+        return np.array(obstacle), time_predict
 
     def check_obstacle(self, obstacle):
         obstacle_checker = []
-        if np.sum(obstacle[:140, 200:350]) > 400000:
+        if np.sum(obstacle[:140, 200:350]) > 1500:
             obstacle_checker.append(True)
         else:
             obstacle_checker.append(False)
-        if np.sum(obstacle[:140, 350:610]) > 400000:
+        if np.sum(obstacle[:140, 350:610]) > 1500:
             obstacle_checker.append(True)
         else:
             obstacle_checker.append(False)
-        if np.sum(obstacle[:140, 610:760]) > 400000:
+        if np.sum(obstacle[:140, 610:760]) > 1500:
             obstacle_checker.append(True)
         else:
             obstacle_checker.append(False)
-        if np.sum(obstacle[140:390, 200:350]) > 400000:
+        if np.sum(obstacle[140:390, 200:350]) > 1500:
             obstacle_checker.append(True)
         else:
             obstacle_checker.append(False)
-        if np.sum(obstacle[140:390, 350:610]) > 400000:
+        if np.sum(obstacle[140:390, 350:610]) > 1500:
             obstacle_checker.append(True)
         else:
             obstacle_checker.append(False)
-        if np.sum(obstacle[140:390, 610:760]) > 400000:
+        if np.sum(obstacle[140:390, 610:760]) > 1500:
             obstacle_checker.append(True)
         else:
             obstacle_checker.append(False)
-        if np.sum(obstacle[390:, 200:350]) > 400000:
+        if np.sum(obstacle[390:, 200:350]) > 1500:
             obstacle_checker.append(True)
         else:
             obstacle_checker.append(False)
-        if np.sum(obstacle[390:, 350:610]) > 1000000:
+        if np.sum(obstacle[390:, 350:610]) > 4000:
             obstacle_checker.append(True)
         else:
             obstacle_checker.append(False)
-        if np.sum(obstacle[390:, 610:760]) > 400000:
+        if np.sum(obstacle[390:, 610:760]) > 1500:
             obstacle_checker.append(True)
         else:
             obstacle_checker.append(False)
